@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: OpenAI AutoTrigger Queue
+  version: 1.0.0
+  description: >-
+    Encola prompts y consulta su ejecución. Cuando OpenAI responde HTTP 429,
+    el backend reprograma el trabajo usando el tiempo indicado por el servidor.
+servers:
+  - url: https://YOUR_PUBLIC_HTTPS_DOMAIN
+    description: Sustituir por el dominio HTTPS del despliegue
+paths:
+  /enqueue:
+    post:
+      operationId: enqueueOpenAITask
+      summary: Añade una tarea a la cola
+      security:
+        - bearerAuth: []
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnqueueRequest'
+      responses:
+        '202':
+          description: Tarea aceptada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnqueueResponse'
+        '401':
+          description: Token inválido
+        '422':
+          description: Petición inválida
+  /status/{task_id}:
+    get:
+      operationId: getOpenAITaskStatus
+      summary: Consulta el estado y resultado de una tarea
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Estado actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          description: Token inválido
+        '404':
+          description: Tarea no encontrada
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    EnqueueRequest:
+      type: object
+      additionalProperties: false
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 100000
+          description: Instrucción completa que se enviará al modelo.
+        model:
+          type: string
+          default: gpt-5.4-mini
+          description: Modelo disponible en el proyecto de OpenAI.
+    EnqueueResponse:
+      type: object
+      required: [task_id, status, status_url]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: queued
+        status_url:
+          type: string
+          format: uri
+    Task:
+      type: object
+      required: [id, prompt, model, status, created_at, updated_at, attempts]
+      properties:
+        id:
+          type: string
+          format: uuid
+        prompt:
+          type: string
+        model:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, waiting, completed, failed]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        attempts:
+          type: integer
+        next_attempt_at:
+          type: number
+          nullable: true
+          description: Instante Unix de reanudación con precisión subsegundo.
+        resume_at:
+          type: string
+          format: date-time
+          nullable: true
+        cooldown_source:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+          nullable: true
+        response_id:
+          type: string
+          nullable: true
+        result:
+          type: string
+          nullable: true
+        error:
+          type: string
+          nullable: true

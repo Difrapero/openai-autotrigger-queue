@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+cola_tareas.json
+.*.tmp
+.pytest_cache/
+/work/
+/outputs/
